@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.python-version
+
+
+# Virtual environments
+.venv
+
+# Environment variables
+.env
+
+# Cursor
+.cursor/
+
+# Docs
+PLANNING.md
+TASK.md
+docs/
+
+# Test notebook
+test.ipynb
+.ipynb_checkpoints/
