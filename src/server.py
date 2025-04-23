@@ -7,6 +7,7 @@ for interacting with the Glassnode API.
 """
 import os
 import json
+import asyncio
 from typing import Dict, List, Optional
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
@@ -15,7 +16,8 @@ from dotenv import load_dotenv
 
 from mcp.server.fastmcp import FastMCP, Context
 
-from glassnode_api import GlassnodeAPIClient
+# Updated import due to src-layout in dependency
+from glassnode_api.glassnode_client import GlassnodeAPIClient
 
 # Load environment variables from .env file
 load_dotenv()
@@ -72,7 +74,8 @@ async def get_assets_list(ctx: Context) -> str:
     """
     api_client = ctx.request_context.lifespan_context.api_client
     try:
-        assets = await api_client.get_assets_list()
+        # Run synchronous call in a separate thread
+        assets = await asyncio.to_thread(api_client.get_assets_list)
         return json.dumps(assets, indent=2)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -89,7 +92,8 @@ async def get_metrics_list(ctx: Context) -> str:
     """
     api_client = ctx.request_context.lifespan_context.api_client
     try:
-        metrics = await api_client.get_metrics_list()
+        # Run synchronous call in a separate thread
+        metrics = await asyncio.to_thread(api_client.get_metrics_list)
         return json.dumps(metrics, indent=2)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -109,7 +113,8 @@ async def get_metric_metadata(ctx: Context, path: str) -> str:
     """
     api_client = ctx.request_context.lifespan_context.api_client
     try:
-        metadata = await api_client.get_metric_metadata(path)
+        # Run synchronous call in a separate thread
+        metadata = await asyncio.to_thread(api_client.get_metric_metadata, path)
         return json.dumps(metadata, indent=2)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -149,16 +154,22 @@ async def fetch_metric(
     api_client = ctx.request_context.lifespan_context.api_client
     
     try:
-        data = await api_client.fetch_metric(
+        # Run synchronous call in a separate thread
+        data = await asyncio.to_thread(
+            api_client.fetch_metric,
             path=path,
             asset=asset,
             since=since,
             until=until,
             interval=interval,
-            format=format,
+            format=format, # Request JSON/CSV from API
+            return_format="raw", # Ensure client returns raw dict/str
             **kwargs
         )
-        return {"status": "success", "data": data}
+        # Server expects dict, Glassnode client returns list[dict] for JSON or str for CSV
+        # We'll wrap the data in a standard response format.
+        # If format='csv', data will be a string; if 'json', it's list[dict]
+        return {"status": "success", "data": data} 
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -170,7 +181,6 @@ async def fetch_bulk_metric(
     since: Optional[int] = None, 
     until: Optional[int] = None,
     interval: str = "24h",
-    format: str = "json",
     ctx: Context = None,
     **kwargs
 ) -> Dict:
@@ -183,7 +193,6 @@ async def fetch_bulk_metric(
         since: Optional start date as Unix timestamp
         until: Optional end date as Unix timestamp
         interval: Resolution interval (defaults to "24h")
-        format: Response format ('json' or 'csv')
         ctx: MCP context object
         **kwargs: Additional parameters to pass to the API
         
@@ -196,14 +205,16 @@ async def fetch_bulk_metric(
     api_client = ctx.request_context.lifespan_context.api_client
     
     try:
-        data = await api_client.fetch_bulk_metric(
+        # Run synchronous call in a separate thread
+        data = await asyncio.to_thread(
+            api_client.fetch_bulk_metric,
             path=path,
             assets=assets,
             since=since,
             until=until,
             interval=interval,
-            format=format,
-            **kwargs
+            return_format="raw", # Ensure client returns the raw dict
+            **kwargs 
         )
         return {"status": "success", "data": data}
     except Exception as e:
