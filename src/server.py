@@ -158,8 +158,9 @@ async def fetch_metric(
     asset: str, 
     since: Optional[int] = None, 
     until: Optional[int] = None,
-    interval: Optional[str] = None,
-    format: str = "json",
+    interval: Optional[str] = "24h",
+    format: Optional[str] = "json",
+    limit: Optional[int] = None,
     ctx: Context = None,
     **kwargs
 ) -> Dict:
@@ -195,6 +196,7 @@ async def fetch_metric(
             until=until,
             interval=interval,
             format=format, # Request JSON/CSV from API
+            limit=limit,
             return_format="raw", # Ensure client returns raw dict/str
             **kwargs
         )
@@ -213,6 +215,7 @@ async def fetch_bulk_metric(
     since: Optional[int] = None, 
     until: Optional[int] = None,
     interval: str = "24h",
+    limit: Optional[int] = None,
     ctx: Context = None,
     **kwargs
 ) -> Dict:
@@ -245,6 +248,7 @@ async def fetch_bulk_metric(
             since=since,
             until=until,
             interval=interval,
+            limit=limit,
             return_format="raw", # Ensure client returns the raw dict
             **kwargs 
         )
