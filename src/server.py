@@ -130,6 +130,39 @@ async def get_metrics_list() -> str:
         return json.dumps({"error": str(e)})
 
 @mcp.tool()
+async def get_asset_metrics(asset: str) -> str:
+    """
+    Get a list of available metrics for a specific asset.
+    
+    This resource returns a JSON object containing all metrics that are 
+    available for the specified asset. Use this when you need to:
+    
+    - Find which metrics are supported for a specific asset
+    - Filter available metrics by asset before making data requests
+    - Check asset-specific metric availability
+    
+    Args:
+        asset: The asset symbol (e.g., "BTC")
+    
+    Returns:
+        str: JSON string containing the list of metrics available for the specified asset
+    """
+    try:
+        metrics_file = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'metrics_per_asset.json'))
+        if os.path.exists(metrics_file):
+            with open(metrics_file, "r") as f:
+                metrics_per_asset = json.load(f)
+            
+            if asset in metrics_per_asset:
+                return json.dumps(metrics_per_asset[asset], indent=2)
+            else:
+                return json.dumps({"error": f"Asset '{asset}' not found in metrics_per_asset.json"})
+        else:
+            return json.dumps({"error": f"File {metrics_file} not found"})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+@mcp.tool()
 async def get_metric_metadata(ctx: Context, metric_path: str) -> str:
     """
     Get metadata for a specific metric.
