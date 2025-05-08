@@ -27,6 +27,7 @@ load_dotenv()
 @dataclass
 class AppContext:
     """Application context for the MCP server."""
+
     api_client: GlassnodeAPIClient
     valid_metrics: Dict[str, Dict] = None
 
@@ -42,24 +43,26 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     Yields:
         AppContext: The application context with initialized resources
     """
-    
     # Load API key from environment variables
     api_key = os.environ.get("GLASSNODE_API_KEY", "")
     if not api_key:
-        raise ValueError("GLASSNODE_API_KEY environment variable not set. Please set it before running the server.")
-    
+        raise ValueError(
+            "GLASSNODE_API_KEY environment variable not set. Please set it before running the server."
+        )
+
     # Initialize Glassnode API client
     api_client = GlassnodeAPIClient(api_key)
-    
+
     try:
         yield AppContext(api_client=api_client)
     finally:
         # No cleanup needed for the client
         pass
 
+
 # Create MCP server
 mcp = FastMCP(
-    "Glassnode MCP", 
+    "Glassnode MCP",
     lifespan=app_lifespan,
 )
 
@@ -82,7 +85,7 @@ async def get_assets_list() -> str:
         str: JSON string containing the list of assets with their metadata
     """
     try:
-        assets_file = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'assets.json'))
+        assets_file = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "assets.json"))
         if os.path.exists(assets_file):
             with open(assets_file, "r") as f:
                 assets = json.load(f)
@@ -99,10 +102,9 @@ async def get_metrics_list() -> str:
     """
     Get a list of all available metrics and their paths from Glassnode API.
     
-    IMPORTANT: This resource should be used to retrieve the correct metric paths
-    that are required when calling the data fetching tools (fetch_metric and 
-    fetch_bulk_metric). The paths returned by this resource are the exact
-    format needed as the 'path' parameter for those tools.
+    IMPORTANT: This resource should be used to retrieve the correct metric paths that are required
+    when calling the data fetching tools (fetch_metric and fetch_bulk_metric). The paths returned
+    by this resource are the exact format needed as the 'path' parameter for those tools.
     
     Examples of metric paths you might find:
     - /market/price_usd_close
@@ -119,7 +121,7 @@ async def get_metrics_list() -> str:
         str: JSON string containing the list of all available metrics with their paths
     """
     try:
-        metrics_file = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'metrics.json'))
+        metrics_file = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "metrics.json"))
         if os.path.exists(metrics_file):
             with open(metrics_file, "r") as f:
                 metrics = json.load(f)
@@ -128,6 +130,7 @@ async def get_metrics_list() -> str:
             return json.dumps({"error": f"File {metrics_file} not found"})
     except Exception as e:
         return json.dumps({"error": str(e)})
+
 
 @mcp.tool()
 async def get_asset_metrics(asset: str) -> str:
@@ -148,11 +151,13 @@ async def get_asset_metrics(asset: str) -> str:
         str: JSON string containing the list of metrics available for the specified asset
     """
     try:
-        metrics_file = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'metrics_per_asset.json'))
+        metrics_file = os.path.abspath(
+            os.path.join(os.path.dirname(sys.argv[0]), "metrics_per_asset.json")
+        )
         if os.path.exists(metrics_file):
             with open(metrics_file, "r") as f:
                 metrics_per_asset = json.load(f)
-            
+
             if asset in metrics_per_asset:
                 return json.dumps(metrics_per_asset[asset], indent=2)
             else:
@@ -162,12 +167,14 @@ async def get_asset_metrics(asset: str) -> str:
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
 @mcp.tool()
 async def get_metric_metadata(ctx: Context, metric_path: str) -> str:
     """
     Get metadata for a specific metric.
     
-    IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
+    IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that
+    '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
 
     Args:
         path: The metric path (e.g., "/market/price_usd_close")
@@ -187,22 +194,24 @@ async def get_metric_metadata(ctx: Context, metric_path: str) -> str:
 # Tools for data retrieval
 @mcp.tool()
 async def fetch_metric(
-    metric_path: str, 
-    asset: str, 
-    since: Optional[int] = None, 
+    metric_path: str,
+    asset: str,
+    since: Optional[int] = None,
     until: Optional[int] = None,
     interval: Optional[str] = "24h",
     format: Optional[str] = "json",
     limit: Optional[int] = None,
     ctx: Context = None,
-    **kwargs
+    **kwargs,
 ) -> Dict:
     """
     Fetch data for a specific metric.
-    IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
+    IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that
+    '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
     
     Args:
-        path: The metric path (e.g., "/market/price_usd_close"). To get the list of available metrics and correct path, call `get_metrics_list()`.
+        path: The metric path (e.g., "/market/price_usd_close"). To get the list of available metrics
+            and correct path, call `get_metrics_list()`.
         asset: The asset symbol (e.g., "BTC")
         since: Optional start date as Unix timestamp
         until: Optional end date as Unix timestamp
@@ -216,9 +225,9 @@ async def fetch_metric(
     """
     if ctx is None:
         return {"error": "Context not available"}
-    
+
     api_client = ctx.request_context.lifespan_context.api_client
-    
+
     try:
         # Run synchronous call in a separate thread
         data = await asyncio.to_thread(
@@ -228,35 +237,37 @@ async def fetch_metric(
             since=since,
             until=until,
             interval=interval,
-            format=format, # Request JSON/CSV from API
+            format=format,  # Request JSON/CSV from API
             limit=limit,
-            return_format="raw", # Ensure client returns raw dict/str
-            **kwargs
+            return_format="raw",  # Ensure client returns raw dict/str
+            **kwargs,
         )
         # Server expects dict, Glassnode client returns list[dict] for JSON or str for CSV
         # We'll wrap the data in a standard response format.
         # If format='csv', data will be a string; if 'json', it's list[dict]
-        return {"status": "success", "data": data} 
+        return {"status": "success", "data": data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
 @mcp.tool()
 async def fetch_bulk_metric(
-    metric_path: str, 
-    assets: Optional[List[str]] = None, 
-    since: Optional[int] = None, 
+    metric_path: str,
+    assets: Optional[List[str]] = None,
+    since: Optional[int] = None,
     until: Optional[int] = None,
     interval: str = "24h",
     limit: Optional[int] = None,
     ctx: Context = None,
-    **kwargs
+    **kwargs,
 ) -> Dict:
     """
     Fetch data for a metric using Glassnode's bulk endpoint.
-    IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
+    IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that
+    '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
     Args:
-        path: The metric path (e.g., "/market/price_usd_close"). To get the list of available metrics and correct path, call `get_metrics_list()`.
+        path: The metric path (e.g., "/market/price_usd_close"). To get the list of available metrics
+            and correct path, call `get_metrics_list()`.
         assets: Optional list of asset symbols (e.g., ["BTC", "ETH"])
         since: Optional start date as Unix timestamp
         until: Optional end date as Unix timestamp
@@ -269,9 +280,9 @@ async def fetch_bulk_metric(
     """
     if ctx is None:
         return {"error": "Context not available"}
-    
+
     api_client = ctx.request_context.lifespan_context.api_client
-    
+
     try:
         # Run synchronous call in a separate thread
         data = await asyncio.to_thread(
@@ -282,42 +293,15 @@ async def fetch_bulk_metric(
             until=until,
             interval=interval,
             limit=limit,
-            return_format="raw", # Ensure client returns the raw dict
-            **kwargs 
+            return_format="raw",  # Ensure client returns the raw dict
+            **kwargs,
         )
         return {"status": "success", "data": data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@mcp.prompt()
-def get_latest_metric_value(asset: str = "BTC", metric_path: str = "market/price_usd_close") -> str:
-    """Get the most recent value for any metric for a specific asset"""
-    # Note: Path should typically start with a category, e.g., "market/price_usd_close"
-    # The underlying client might handle adding a leading slash if needed.
-    # Ensure metric_path format aligns with what get_metric_metadata expects.
-    
-    return f"""Goal: Retrieve and format the single most recent data point for the metric '{metric_path}' for asset '{asset}'.
-
-    Steps:
-    1. **Check Valid Metrics First:** IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that '{metric_path}' (or with a leading slash) is a valid metric path. If not, find the closest matching metric path from the list.
-    
-    2.  **Get Metadata & Determine Interval:** After verifying the metric path, call `get_metric_metadata(path="{metric_path}")` to get the metric's details, including available resolutions and units. From the available resolutions, choose the highest frequency (e.g., prefer '10m' over '1h', '1h' over '24h'). If resolutions aren't available or the call fails, default to '24h' interval. Keep the unit and description for the final output.
-    
-    3.  **Fetch Recent Data:** Call `fetch_metric` to get data covering roughly the last 3 days to ensure the latest point is captured. Calculate the 'since' timestamp (current time minus 3 days as a Unix timestamp). Use the interval determined in step 1. Request JSON format.
-        *Example Call Structure:* `fetch_metric(path="{metric_path}", asset="{asset}", interval=<chosen_interval>, since=<timestamp_3_days_ago>, format="json")`
-    
-    4.  **Extract Latest Point:** Process the JSON list returned by `fetch_metric`. Find the dictionary with the maximum timestamp value in the 't' field. Extract its corresponding value 'v' and timestamp 't'.
-    
-    5.  **Format Output:** Present the result clearly, including:
-        - The exact latest value ('v').
-        - The timestamp ('t') of the latest value (mention it's a Unix timestamp).
-        - The unit of measurement (obtained from metadata in step 1).
-        - A brief description of what the metric represents (obtained from metadata in step 1).
-
-    Error Handling: If `fetch_metric` returns no data for the period, state that clearly. If any API call returns an error, report the error message.
-    """
 
 # Run the server when executed directly
 if __name__ == "__main__":
     # For development purposes
-    mcp.run() 
+    mcp.run()
