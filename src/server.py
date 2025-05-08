@@ -64,6 +64,8 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 mcp = FastMCP(
     "Glassnode MCP",
     lifespan=app_lifespan,
+    host = os.getenv("HOST", "0.0.0.0"),
+    port = int(os.getenv("PORT", "8050"))
 )
 
 
@@ -301,7 +303,24 @@ async def fetch_bulk_metric(
         return {"status": "error", "message": str(e)}
 
 
+async def main():
+    """
+    Main entry point for the MCP server.
+    Determines which transport to use (stdio or SSE) based on environment variables.
+    """
+    # Simple transport selection based on environment variable
+    transport = os.getenv("TRANSPORT", "sse")
+    
+    if transport == 'sse':      
+        # Run the MCP server with SSE transport
+        await mcp.run_sse_async()
+    else:
+        # Run the MCP server with stdio transport
+        await mcp.run_stdio_async()
+
+
 # Run the server when executed directly
 if __name__ == "__main__":
     # For development purposes
-    mcp.run()
+    # mcp.run()
+    asyncio.run(main())
