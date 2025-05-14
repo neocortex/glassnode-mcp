@@ -51,7 +51,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         )
 
     # Initialize Glassnode API client
-    api_client = GlassnodeAPIClient(api_key)
+    api_client = GlassnodeAPIClient(api_key, return_format="raw")
 
     try:
         yield AppContext(api_client=api_client)
@@ -208,8 +208,15 @@ async def fetch_metric(
 ) -> Dict:
     """
     Fetch data for a specific metric.
+
     IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that
     '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
+
+    If the user provides a relative time range (e.g., "lastest", "past week", "last 24 hours", "last 30 days",
+    "past 12 months", "past 1 year"), the agent must convert it into an absolute time range using the current UTC time
+    (e.g., get current UTC time, subtract 7 days), and then pass the result as ISO 8601
+    `since` parameter. If not specifically desired by the user, `until` can be ommitted. The data returned
+    will extend to the most recent available datapoint.
     
     Args:
         path: The metric path (e.g., "/market/price_usd_close"). To get the list of available metrics
@@ -264,9 +271,17 @@ async def fetch_bulk_metric(
     **kwargs,
 ) -> Dict:
     """
-    Fetch data for a metric using Glassnode's bulk endpoint.
+    Fetch data for a metric using Glassnode's bulk endpoint. Use this when you need to fetch data for multiple assets.
+
     IMPORTANT - First call the resource get_metrics_list() to get all available metrics. Verify that
     '{metric_path}' is a valid metric path. If not, find the closest matching metric path from the list.
+
+    If the user provides a relative time range (e.g., "lastest", "past week", "last 24 hours", "last 30 days",
+    "past 12 months", "past 1 year"), the agent must convert it into an absolute time range using the current UTC time
+    (e.g., get current UTC time, subtract 7 days), and then pass the result as ISO 8601
+    `since` parameter. If not specifically desired by the user, `until` can be ommitted. The data returned
+    will extend to the most recent available datapoint.
+
     Args:
         path: The metric path (e.g., "/market/price_usd_close"). To get the list of available metrics
             and correct path, call `get_metrics_list()`.
@@ -322,5 +337,5 @@ async def main():
 # Run the server when executed directly
 if __name__ == "__main__":
     # For development purposes
-    # mcp.run()
+    # mcp.run(transport='stdio')
     asyncio.run(main())

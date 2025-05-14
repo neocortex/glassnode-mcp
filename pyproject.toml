@@ -1,5 +1,5 @@
 [project]
-name = "gn-mcp"
+name = "glassnode-mcp"
 version = "0.1.0"
 description = "Glassnode API MCP Server"
 readme = "README.md"
